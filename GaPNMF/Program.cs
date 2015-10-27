@@ -13,13 +13,12 @@ namespace GaPNMF
         static double[,] X;
         static double[,] W_estimated;
         static double[,] H_estimated;
-        static double[,] gamma_W;
+        static double[] Theta_estimated;
+
         static double[,] lo_W;
         static double[,] tau_W;
-        static double[,] gamma_H;
         static double[,] lo_H;
         static double[,] tau_H;
-        static double[] gamma_Theta;
         static double[] lo_Theta;
         static double[] tau_Theta;
 
@@ -34,6 +33,8 @@ namespace GaPNMF
         static int I;
         static int J;
         static int K;
+
+        static int[] sorted_index;
 
         static void Main(string[] args)
         {
@@ -51,17 +52,18 @@ namespace GaPNMF
             X = CsvFileIO.CsvFileIO.ReadData("");
             I = X.GetLength(0);
             J = X.GetLength(1);
-            gamma_W = new double[I, K];
             lo_W = new double[I, K];
             tau_W = new double[I, K];
-            gamma_H = new double[K, J];
+            W_estimated = new double[I, K];
             lo_H = new double[K, J];
             tau_H = new double[K, J];
-            gamma_Theta = new double[K];
+            H_estimated = new double[K, J];
             lo_Theta = new double[K];
             tau_Theta = new double[K];
+            Theta_estimated = new double[K];
             fai = new double[I, J, K];
             omega = new double[I, J];
+            sorted_index = (int[])Enumerable.Range(0, K - 1);
             a = 0.1;
             b = 0.1;
             c = 1.0;
@@ -70,11 +72,11 @@ namespace GaPNMF
 
         static void estimated()
         {
-            List<int> threshold=new List<int>();
+            List<int> threshold = new List<int>();
             for (int k = 0; k < K; k++)
-                if (GIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]) > 0.01)
+                if (GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) > 0.01)
                     threshold.Add(k);
-            int L=threshold.Count;
+            int L = threshold.Count;
             W_estimated = new double[I, L];
             H_estimated = new double[L, J];
 
@@ -88,13 +90,12 @@ namespace GaPNMF
                     double sum1 = 0, sum2 = 0;
                     for (int j = 0; j < J; j++)
                     {
-                        sum1 += GIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]);
+                        sum1 += GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
+                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
                     }
 
-                    gamma_W[i, k] = a;
-                    lo_W[i, k] = a + GIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]) * sum1;
-                    tau_W[i, k] = invGIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]) * sum2;
+                    lo_W[i, k] = a + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
+                    tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
                 }
         }
 
@@ -106,13 +107,12 @@ namespace GaPNMF
                     double sum1 = 0, sum2 = 0;
                     for (int i = 0; i < I; i++)
                     {
-                        sum1 += GIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]);
+                        sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) / omega[i, j];
+                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]);
                     }
 
-                    gamma_H[k, j] = b;
-                    lo_H[k, j] = b + GIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]) * sum1;
-                    tau_H[k, j] = invGIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]) * sum2;
+                    lo_H[k, j] = b + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
+                    tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
                 }
         }
 
@@ -124,10 +124,10 @@ namespace GaPNMF
                 for (int i = 0; i < I; i++)
                     for (int j = 0; j < J; j++)
                     {
-                        sum1 += GIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]) * GIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]) * invGIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]);
+                        sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
+                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
                     }
-                gamma_Theta[k] = alpha / K;
+
                 lo_Theta[k] = alpha * c + sum1;
                 tau_Theta[k] = sum2;
             }
@@ -135,22 +135,42 @@ namespace GaPNMF
 
         static void updateFai()
         {
-            for (int i = 0; i < I; i++)
-                for (int j = 0; j < J; j++)
-                    for (int k = 0; k < K; k++)
-                        fai[i, j, k] = 1.0 / (invGIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]) * invGIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]) * invGIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]));
+            for (int k = 0; k < K; k++)
+            {
+                double sum = 0;
+                for (int i = 0; i < I; i++)
+                    for (int j = 0; j < J; j++)
+                    {
+                        fai[i, j, k] = 1.0 / (invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]) * invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]));
+                        sum += fai[i, j, k];
+                    }
+                for (int i = 0; i < I; i++)
+                    for (int j = 0; j < J; j++)
+                        fai[i, j, k] /= sum;        //kについて規格化
+            }
         }
 
         static void updateOmega()
         {
-             for (int i = 0; i < I; i++)
-                 for (int j = 0; j < J; j++)
-                 {
-                     double sum = 0;
-                     for (int k = 0; k < K; k++)
-                         sum += GIG_expectation(gamma_W[i, k], lo_W[i, k], tau_W[i, k]) * GIG_expectation(gamma_H[k, j], lo_H[k, j], tau_H[k, j]) * GIG_expectation(gamma_Theta[k], lo_Theta[k], tau_Theta[k]);
-                     omega[i, j] = sum;
-                 }
+            for (int i = 0; i < I; i++)
+                for (int j = 0; j < J; j++)
+                {
+                    double sum = 0;
+                    for (int k = 0; k < K; k++)
+                        sum += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) * GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+                    omega[i, j] = sum;
+                }
+        }
+
+        static void sortingOnTheta()
+        {
+            //降順にソート
+            for (int k = 0; k < K; k++)
+                Theta_estimated[k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+            Array.Sort(Theta_estimated, sorted_index);
+            Array.Reverse(Theta_estimated);
+            Array.Reverse(sorted_index);    
+
         }
 
         //--------------------------------------------------------------------
