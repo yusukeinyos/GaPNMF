@@ -32,7 +32,8 @@ namespace GaPNMF
 
         static int I;
         static int J;
-        static int K;
+        static int K; //最初に用意しておく基底
+        static int L; //実際に使う基底
 
         static int[] sorted_index;
 
@@ -52,6 +53,8 @@ namespace GaPNMF
             X = CsvFileIO.CsvFileIO.ReadData("");
             I = X.GetLength(0);
             J = X.GetLength(1);
+            K = 50;
+            L = K;
             lo_W = new double[I, K];
             tau_W = new double[I, K];
             W_estimated = new double[I, K];
@@ -169,8 +172,9 @@ namespace GaPNMF
                 Theta_estimated[k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
             Array.Sort(Theta_estimated, sorted_index);
             Array.Reverse(Theta_estimated);
-            Array.Reverse(sorted_index);    
-
+            Array.Reverse(sorted_index);
+            L = Theta_estimated.Where(num => num > 0.001).Count();
+            Theta_estimated.SortAsIndex(sorted_index);
         }
 
         //--------------------------------------------------------------------
