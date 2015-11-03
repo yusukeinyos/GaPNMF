@@ -175,6 +175,7 @@ namespace GaPNMF
             Array.Reverse(sorted_index);
             L = Theta_estimated.Where(num => num > 0.001).Count();
             Theta_estimated.SortAsIndex(sorted_index);
+
         }
 
         //--------------------------------------------------------------------
@@ -223,6 +224,36 @@ namespace GaPNMF
             double b = bessel_1(x, -dim);
             y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
             return y;
+        }
+
+        static double[,] pivotMatrix(double[,] mat, int[] index_key, int flag)
+        {
+            int I = mat.GetLength(0);
+            int J = mat.GetLength(1);
+            double[] re;
+            if (flag == 0)          //行ピボット
+            {
+                re = new double[J];
+                for (int i = 0; i < I; i++)                
+                    for (int j = 0; j < J; j++)
+                    {
+                        re[j] = mat[i, j];
+                        mat[i, j] = mat[index_key[i], j];
+                        mat[index_key[i], j] = re[j];
+                    }         
+            }
+            else if (flag == 1)     //列ピボット
+            {
+                re = new double[I];
+                for (int j = 0; j < J; j++)                
+                    for (int i = 0; i < I; i++)
+                    {
+                        re[i] = mat[i, j];
+                        mat[i, j] = mat[i, index_key[j]];
+                        mat[i, index_key[j]] = re[i];
+                    }                
+            }
+            return mat;
         }
     }
 }
