@@ -3018,7 +3018,7 @@ namespace InoueLab
             if (gamma >= 100.0) return gammpapprox(gamma, value, false);
             return (value < gamma + 1.0) ? 1.0 - gser(gamma, value) : gcf(gamma, value);
         }
-        static double InverseIncompleteGamma(double value, double gamma)
+        public static double InverseIncompleteGamma(double value, double gamma)
         {
             if (gamma <= 0.0) return double.NaN;
             if (value >= 1.0) return Math.Max(100.0, gamma + 100.0 * Math.Sqrt(gamma));

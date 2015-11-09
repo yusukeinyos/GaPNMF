@@ -35,22 +35,37 @@ namespace GaPNMF
         static int K; //最初に用意しておく基底
         static int L; //実際に使う基底
 
-        static int[] sorted_index;
+        static int[] goodness_index;
 
         static void Main(string[] args)
         {
-            double[,] data = new double[100, 2];
-            for (int i = 0; i < 70; i++)
+            //double[,] data = new double[100, 2];
+            //for (int i = 0; i < 70; i++)
+            //{
+            //    data[i, 0] = 0.5 * i;
+            //    data[i, 1] = bessel_2(data[i, 0], 0.8);
+            //}
+            //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
+
+            int max_itteration = 50;
+            int itteration = 0;
+            init();
+            do
             {
-                data[i, 0] = 0.5 * i;
-                data[i, 1] = bessel_2(data[i, 0], 0.8);
-            }
-            CsvFileIO.CsvFileIO.WriteData("output.csv", data);
+                Update();
+                itteration++;
+            } while (itteration < max_itteration);
+
+            //double[,] data = new double[100,1];
+            //for (int i = 0; i < 100; i++)
+            //    data[i,0] = gamma_rnd(2, 1);
+            //CsvFileIO.CsvFileIO.WriteData("test.csv", data);
+
         }
 
         static void init()
         {
-            X = CsvFileIO.CsvFileIO.ReadData("");
+            X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\mix4.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
             K = 50;
@@ -66,7 +81,21 @@ namespace GaPNMF
             Theta_estimated = new double[K];
             fai = new double[I, J, K];
             omega = new double[I, J];
-            sorted_index = (int[])Enumerable.Range(0, K - 1);
+
+            for (int k = 0; k < K; k++)
+            {
+                for (int i = 0; i < I; i++)
+                    tau_W[i, k] = 0.1;
+                for (int j = 0; j < J; j++)
+                    tau_H[k, j] = 0.1;
+                tau_Theta[k] = 0.1;
+                lo_Theta[k] = initMatrix(1, 1)[0, 0];
+            }
+
+            lo_W = initMatrix(I, K);
+            lo_H = initMatrix(K, J);
+
+
             a = 0.1;
             b = 0.1;
             c = 1.0;
@@ -83,6 +112,15 @@ namespace GaPNMF
             W_estimated = new double[I, L];
             H_estimated = new double[L, J];
 
+        }
+
+        static void Update()
+        {
+            //updateFai();
+            updateOmega();
+            updateHpara();
+            updateWpara();
+            updateThetapara();
         }
 
         static void updateWpara()
@@ -170,11 +208,10 @@ namespace GaPNMF
             //降順にソート
             for (int k = 0; k < K; k++)
                 Theta_estimated[k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
-            Array.Sort(Theta_estimated, sorted_index);
-            Array.Reverse(Theta_estimated);
-            Array.Reverse(sorted_index);
+
+            goodness_index = (int[])Theta_estimated.Select((num, index) => new { Index = index, Value = num }).Where(num => num.Value > 0.001).Select(num => num.Index);
             L = Theta_estimated.Where(num => num > 0.001).Count();
-            Theta_estimated.SortAsIndex(sorted_index);
+
 
         }
 
@@ -205,7 +242,7 @@ namespace GaPNMF
             int m = 0;
             do
             {
-                b = Mt.Factorial(m) * Mt.Gamma(dim + m + 1.0);
+                b = Mt.Factorial(m) * Gamma2(dim + m + 1.0);
                 delta_y = 1.0 / b * Math.Pow(x / 2.0, 2.0 * m);
                 if (m % 2 == 1)
                     delta_y = -delta_y;
@@ -226,6 +263,34 @@ namespace GaPNMF
             return y;
         }
 
+        static double Gamma2(double d)
+        {
+            if (d > 0)
+                return Mt.Gamma(d);
+            else
+                return Math.PI / (Math.Sin(Math.PI * d) * Mt.Gamma(1.0 - d));
+
+        }
+        static double gamma_rnd(double shape, double scale)
+        {
+            double output;
+            RandomMT rand = new RandomMT();
+            double input = rand.Double();
+            output = scale * Mt.InverseIncompleteGamma(shape, input);
+            return output;
+        }
+
+        //初期値をランダムに設定 (0,1]
+        public static double[,] initMatrix(int N, int M)
+        {
+            RandomMT rand = new RandomMT();
+            double[,] A = new double[N, M];
+            for (int i = 0; i < N; i++)
+                for (int j = 0; j < M; j++)
+                    A[i, j] = 10 * rand.Double32OC();
+            return A;
+        }
+
         static double[,] pivotMatrix(double[,] mat, int[] index_key, int flag)
         {
             int I = mat.GetLength(0);
@@ -234,24 +299,24 @@ namespace GaPNMF
             if (flag == 0)          //行ピボット
             {
                 re = new double[J];
-                for (int i = 0; i < I; i++)                
+                for (int i = 0; i < I; i++)
                     for (int j = 0; j < J; j++)
                     {
                         re[j] = mat[i, j];
                         mat[i, j] = mat[index_key[i], j];
                         mat[index_key[i], j] = re[j];
-                    }         
+                    }
             }
             else if (flag == 1)     //列ピボット
             {
                 re = new double[I];
-                for (int j = 0; j < J; j++)                
+                for (int j = 0; j < J; j++)
                     for (int i = 0; i < I; i++)
                     {
                         re[i] = mat[i, j];
                         mat[i, j] = mat[i, index_key[j]];
                         mat[i, index_key[j]] = re[i];
-                    }                
+                    }
             }
             return mat;
         }
