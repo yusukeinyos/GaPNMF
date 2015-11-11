@@ -50,11 +50,16 @@ namespace GaPNMF
             int max_itteration = 50;
             int itteration = 0;
             init();
+            double[,] theta_regist = new double[max_itteration, K];
             do
             {
                 Update();
+                Console.WriteLine("itteration : " + itteration + 1);
+                for (int k = 0; k < K; k++)
+                    theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
                 itteration++;
             } while (itteration < max_itteration);
+            CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
 
             //double[,] data = new double[100,1];
             //for (int i = 0; i < 100; i++)
@@ -68,7 +73,7 @@ namespace GaPNMF
             X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\mix4.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
-            K = 50;
+            K = 10;
             L = K;
             lo_W = new double[I, K];
             tau_W = new double[I, K];
@@ -116,7 +121,7 @@ namespace GaPNMF
 
         static void Update()
         {
-            //updateFai();
+            updateFai();
             updateOmega();
             updateHpara();
             updateWpara();
