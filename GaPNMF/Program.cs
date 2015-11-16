@@ -39,32 +39,41 @@ namespace GaPNMF
 
         static void Main(string[] args)
         {
-            //double[,] data = new double[100, 2];
-            //for (int i = 0; i < 70; i++)
-            //{
-            //    data[i, 0] = 0.5 * i;
-            //    data[i, 1] = bessel_2(data[i, 0], 0.8);
-            //}
-            //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
-
-            int max_itteration = 50;
-            int itteration = 0;
-            init();
-            double[,] theta_regist = new double[max_itteration, K];
-            do
+            MLApp.MLApp matlab=new MLApp.MLApp();
+            matlab.Execute(@"cd C:\Users\優\Desktop");
+            double[,] data = new double[100, 2];
+            for (int i = 0; i < 100; i++)
             {
-                Update();
-                Console.WriteLine("itteration : " + itteration + 1);
-                for (int k = 0; k < K; k++)
-                    theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
-                itteration++;
-            } while (itteration < max_itteration);
-            CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+                data[i, 0] = 0.5 * i;
+                //data[i, 1] = bessel_2(data[i, 0], 0.8);
+                object result=null;
+                matlab.Feval("Bessel2",1,out result,data[i,0],0.8);
+                object[] res=result as object[];
+                data[i, 1] = double.Parse(res[0].ToString());
+            }
+            CsvFileIO.CsvFileIO.WriteData("output.csv", data);
 
-            //double[,] data = new double[100,1];
-            //for (int i = 0; i < 100; i++)
-            //    data[i,0] = gamma_rnd(2, 1);
+            //int max_itteration = 50;
+            //int itteration = 0;
+            //init();
+            //double[,] theta_regist = new double[max_itteration, K];
+            //do
+            //{
+            //    Update();
+            //    Console.WriteLine("itteration : " + itteration + 1);
+            //    for (int k = 0; k < K; k++)
+            //        theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+            //    itteration++;
+            //} while (itteration < max_itteration);
+            //CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+
+            ////----------------ガンマ乱数テスト-----------------------------
+            //double[,] data = new double[10000, 1];
+            //RandomMT rand = new RandomMT();
+            //for (int i = 0; i < 10000; i++)
+            //    data[i, 0] = gamma_rnd(rand, 1, 2);
             //CsvFileIO.CsvFileIO.WriteData("test.csv", data);
+            ////--------------------------------------------------------------
 
         }
 
@@ -220,35 +229,52 @@ namespace GaPNMF
 
         }
 
-        //--------------------------------------------------------------------
+        //--------------------------------------------------------------------       cの計算は統一できそう
         static double GIG_expectation(double gamma, double lo, double tau)
         {
-            double a = Math.Sqrt(lo * tau);
-            double b = bessel_2(2 * a, gamma + 1.0);
-            double c = bessel_2(2 * a, gamma);
-            return b * Math.Sqrt(tau) / (c * Math.Sqrt(lo));
+            if (tau > 1.0e-200)
+            {
+                double a = Math.Sqrt(lo * tau);
+                double b = bessel_2(2 * a, gamma + 1.0);
+                double c = bessel_2(2 * a, gamma);
+                return b * Math.Sqrt(tau) / (c * Math.Sqrt(lo));
+            }
+            else                                                      //tau<<1 ではGIG分布はガンマ分布に
+                return gamma / lo;
 
         }
 
         static double invGIG_expectation(double gamma, double lo, double tau)
         {
-            double a = Math.Sqrt(lo * tau);
-            double b = bessel_2(2 * a, gamma - 1.0);
-            double c = bessel_2(2 * a, gamma);
-            return b * Math.Sqrt(lo) / (c * Math.Sqrt(tau));
+            if (tau > 1.0e-200)
+            {
+                double a = Math.Sqrt(lo * tau);
+                double b = bessel_2(2 * a, gamma - 1.0);
+                double c = bessel_2(2 * a, gamma);
+                return b * Math.Sqrt(lo) / (c * Math.Sqrt(tau));
+            }
+            else                                                      //tau<<1 ではGIG分布はガンマ分布に
+            {
+                double e = lo / (gamma - 1.0);
+                if (e >= 0)
+                    return e;
+                else
+                    return Double.PositiveInfinity;
+
+            }
+
         }
 
         static double bessel_1(double x, double dim)
         {
             double y = 0;
             double a = Math.Pow(x / 2.0, dim);
-            double b = 0;
             double delta_y = 0;
             int m = 0;
             do
             {
-                b = Mt.Factorial(m) * Gamma2(dim + m + 1.0);
-                delta_y = 1.0 / b * Math.Pow(x / 2.0, 2.0 * m);
+                delta_y = -Math.Log10(Mt.Factorial(m))-Math.Log10(Gamma2(dim + m + 1.0)) + 2.0 * m * Math.Log10(x / 2.0);
+                delta_y = Math.Pow(10.0,delta_y);
                 if (m % 2 == 1)
                     delta_y = -delta_y;
 
@@ -276,12 +302,11 @@ namespace GaPNMF
                 return Math.PI / (Math.Sin(Math.PI * d) * Mt.Gamma(1.0 - d));
 
         }
-        static double gamma_rnd(double shape, double scale)
+        static double gamma_rnd(RandomMT rand, double shape, double scale)
         {
             double output;
-            RandomMT rand = new RandomMT();
             double input = rand.Double();
-            output = scale * Mt.InverseIncompleteGamma(shape, input);
+            output = scale * Mt.InverseIncompleteGamma(input, shape);
             return output;
         }
 
