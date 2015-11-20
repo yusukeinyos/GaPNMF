@@ -39,33 +39,33 @@ namespace GaPNMF
 
         static void Main(string[] args)
         {
-            MLApp.MLApp matlab=new MLApp.MLApp();
-            matlab.Execute(@"cd C:\Users\優\Desktop");
-            double[,] data = new double[100, 2];
-            for (int i = 0; i < 100; i++)
-            {
-                data[i, 0] = 0.5 * i;
-                //data[i, 1] = bessel_2(data[i, 0], 0.8);
-                object result=null;
-                matlab.Feval("Bessel2",1,out result,data[i,0],0.8);
-                object[] res=result as object[];
-                data[i, 1] = double.Parse(res[0].ToString());
-            }
-            CsvFileIO.CsvFileIO.WriteData("output.csv", data);
-
-            //int max_itteration = 50;
-            //int itteration = 0;
-            //init();
-            //double[,] theta_regist = new double[max_itteration, K];
-            //do
+            //MLApp.MLApp matlab=new MLApp.MLApp();
+            //matlab.Execute(@"cd C:\Users\優\Desktop");
+            //double[,] data = new double[100, 2];
+            //for (int i = 0; i < 100; i++)
             //{
-            //    Update();
-            //    Console.WriteLine("itteration : " + itteration + 1);
-            //    for (int k = 0; k < K; k++)
-            //        theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
-            //    itteration++;
-            //} while (itteration < max_itteration);
-            //CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+            //    data[i, 0] = 0.5 * i;
+            //    //data[i, 1] = bessel_2(data[i, 0], 0.8);
+            //    object result=null;
+            //    matlab.Feval("Bessel2",1,out result,data[i,0],0.8);
+            //    object[] res=result as object[];
+            //    data[i, 1] = double.Parse(res[0].ToString());
+            //}
+            //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
+
+            int max_itteration = 50;
+            int itteration = 0;
+            init();
+            double[,] theta_regist = new double[max_itteration, K];
+            do
+            {
+                Update();
+                Console.WriteLine("itteration : " + itteration + 1);
+                for (int k = 0; k < K; k++)
+                    theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+                itteration++;
+            } while (itteration < max_itteration);
+            CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
 
             ////----------------ガンマ乱数テスト-----------------------------
             //double[,] data = new double[10000, 1];
@@ -204,7 +204,7 @@ namespace GaPNMF
                         fai[i, j, k] /= sum;        //kについて規格化
             }
         }
-
+        
         static void updateOmega()
         {
             for (int i = 0; i < I; i++)
@@ -273,8 +273,8 @@ namespace GaPNMF
             int m = 0;
             do
             {
-                delta_y = -Math.Log10(Mt.Factorial(m))-Math.Log10(Gamma2(dim + m + 1.0)) + 2.0 * m * Math.Log10(x / 2.0);
-                delta_y = Math.Pow(10.0,delta_y);
+                delta_y = -Math.Log10(Mt.Factorial(m)) - Math.Log10(Gamma2(dim + m + 1.0)) + 2.0 * m * Math.Log10(x / 2.0);
+                delta_y = Math.Pow(10.0, delta_y);
                 if (m % 2 == 1)
                     delta_y = -delta_y;
 
@@ -288,9 +288,16 @@ namespace GaPNMF
         static double bessel_2(double x, double dim)
         {
             double y = 0;
-            double a = bessel_1(x, dim);
-            double b = bessel_1(x, -dim);
-            y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
+            MLApp.MLApp matlab = new MLApp.MLApp();
+            matlab.Execute(@"cd C:\Users\優\Desktop");
+            object result = null;
+            matlab.Feval("Bessel2", 1, out result, x, dim);
+            object[] res = result as object[];
+            y = double.Parse(res[0].ToString());
+
+            //double a = bessel_1(x, dim);
+            //double b = bessel_1(x, -dim);
+            //y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
             return y;
         }
 
