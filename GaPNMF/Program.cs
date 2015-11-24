@@ -140,6 +140,7 @@ namespace GaPNMF
             updateHpara();
             updateWpara();
             updateThetapara();
+            sortingOnTheta();
         }
 
         static void updateWpara()
@@ -147,32 +148,38 @@ namespace GaPNMF
             for (int i = 0; i < I; i++)
                 for (int k = 0; k < K; k++)
                 {
-                    double sum1 = 0, sum2 = 0;
-                    for (int j = 0; j < J; j++)
+                    if (goodness_index.Contains(k))
                     {
-                        sum1 += GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
-                    }
+                        double sum1 = 0, sum2 = 0;
+                        for (int j = 0; j < J; j++)
+                        {
+                            sum1 += GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
+                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
+                        }
 
-                    lo_W[i, k] = a + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
-                    tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        lo_W[i, k] = a + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
+                        tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                    }
                 }
         }
 
         static void updateHpara()
         {
             for (int k = 0; k < K; k++)
-                for (int j = 0; j < J; j++)
+                if (goodness_index.Contains(k))
                 {
-                    double sum1 = 0, sum2 = 0;
-                    for (int i = 0; i < I; i++)
+                    for (int j = 0; j < J; j++)
                     {
-                        sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]);
-                    }
+                        double sum1 = 0, sum2 = 0;
+                        for (int i = 0; i < I; i++)
+                        {
+                            sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) / omega[i, j];
+                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]);
+                        }
 
-                    lo_H[k, j] = b + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
-                    tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        lo_H[k, j] = b + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
+                        tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                    }
                 }
         }
 
@@ -180,16 +187,19 @@ namespace GaPNMF
         {
             for (int k = 0; k < K; k++)
             {
-                double sum1 = 0, sum2 = 0;
-                for (int i = 0; i < I; i++)
-                    for (int j = 0; j < J; j++)
-                    {
-                        sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                        sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
-                    }
+                if (goodness_index.Contains(k))
+                {
+                    double sum1 = 0, sum2 = 0;
+                    for (int i = 0; i < I; i++)
+                        for (int j = 0; j < J; j++)
+                        {
+                            sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
+                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
+                        }
 
-                lo_Theta[k] = alpha * c + sum1;
-                tau_Theta[k] = sum2;
+                    lo_Theta[k] = alpha * c + sum1;
+                    tau_Theta[k] = sum2;
+                }
             }
         }
 
@@ -197,16 +207,19 @@ namespace GaPNMF
         {
             for (int k = 0; k < K; k++)
             {
-                double sum = 0;
-                for (int i = 0; i < I; i++)
-                    for (int j = 0; j < J; j++)
-                    {
-                        fai[i, j, k] = 1.0 / (invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]) * invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]));
-                        sum += fai[i, j, k];
-                    }
-                for (int i = 0; i < I; i++)
-                    for (int j = 0; j < J; j++)
-                        fai[i, j, k] /= sum;        //kについて規格化
+                if (goodness_index.Contains(k))
+                {
+                    double sum = 0;
+                    for (int i = 0; i < I; i++)
+                        for (int j = 0; j < J; j++)
+                        {
+                            fai[i, j, k] = 1.0 / (invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]) * invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]));
+                            sum += fai[i, j, k];
+                        }
+                    for (int i = 0; i < I; i++)
+                        for (int j = 0; j < J; j++)
+                            fai[i, j, k] /= sum;        //kについて規格化
+                }
             }
         }
 
@@ -217,7 +230,8 @@ namespace GaPNMF
                 {
                     double sum = 0;
                     for (int k = 0; k < K; k++)
-                        sum += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) * GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+                        if (goodness_index.Contains(k))
+                            sum += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) * GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
                     omega[i, j] = sum;
                 }
         }
@@ -309,14 +323,14 @@ namespace GaPNMF
         //変形第2種ベッセル関数（Fractional order only）整数次元にもいずれ対応
         static double besselk(double x, double nu)
         {
-            int MAX_ITTERATION=10000;
+            int MAX_ITTERATION = 10000;
             double bessel_k;
             double bessel_k1;
             double bessel_knew;
 
             int recurrences = (int)(nu + 0.5); //number of upward recurrence of K
             double nu1 = nu - recurrences; //-0.5 < nu1 < 0.5
-            double xi2=2.0/x;
+            double xi2 = 2.0 / x;
 
             if (x < 2.0) //for small x
             {
@@ -326,69 +340,69 @@ namespace GaPNMF
                 double gamma2 = (1.0 / gamma_negnu + 1.0 / gamma_posnu) / 2.0;
                 double sigma = nu1 * -Math.Log(x / 2.0);
                 double f = nu1 * Math.PI / Math.Sin(nu1 * Math.PI) * (Math.Cosh(sigma) * gamma1 + Math.Sinh(sigma) / sigma * (-Math.Log(x / 2.0)) * gamma2);
-                double p=Math.Pow(x/2.0,-nu1)*Gamma2(1.0+nu1)/2.0;
-                double q=Math.Pow(x/2.0,nu1)*Gamma2(1.0-nu1)/2.0;
-                double c=1.0;
-                double d=x*x/4.0;
-                double sum=f;
-                double sum1=p;
-                double del=0.0;
-                double del1=0.0;
-                for(int i=1;i<MAX_ITTERATION;i++)
+                double p = Math.Pow(x / 2.0, -nu1) * Gamma2(1.0 + nu1) / 2.0;
+                double q = Math.Pow(x / 2.0, nu1) * Gamma2(1.0 - nu1) / 2.0;
+                double c = 1.0;
+                double d = x * x / 4.0;
+                double sum = f;
+                double sum1 = p;
+                double del = 0.0;
+                double del1 = 0.0;
+                for (int i = 1; i < MAX_ITTERATION; i++)
                 {
-                    f=(i*f+p+q)/(i*i-nu1*nu1);
-                    c*=d/i;
-                    p/=i-nu1;
-                    q/=i+nu1;
-                    del=c*f;
-                    sum+=del;
-                    del1=c*(p-i*f);
-                    sum1+=del1;
-                    if(Math.Abs(del)<1.0E-10) break;
+                    f = (i * f + p + q) / (i * i - nu1 * nu1);
+                    c *= d / i;
+                    p /= i - nu1;
+                    q /= i + nu1;
+                    del = c * f;
+                    sum += del;
+                    del1 = c * (p - i * f);
+                    sum1 += del1;
+                    if (Math.Abs(del) < 1.0E-10) break;
                 }
-                bessel_k=sum;
-                bessel_k1=sum1*xi2;   
+                bessel_k = sum;
+                bessel_k1 = sum1 * xi2;
             }
             else
             {
-                double b=2.0*(1.0+x);
-                double d=1.0/b;
-                double h=d;
-                double delh=d;
-                double q1=0.0;
-                double q2=1.0;
-                double a1=0.25-nu1*nu1;
-                double q=a1;
-                double c=q1;
-                double a=-a1;
-                double s=1.0+q*delh;
+                double b = 2.0 * (1.0 + x);
+                double d = 1.0 / b;
+                double h = d;
+                double delh = d;
+                double q1 = 0.0;
+                double q2 = 1.0;
+                double a1 = 0.25 - nu1 * nu1;
+                double q = a1;
+                double c = q1;
+                double a = -a1;
+                double s = 1.0 + q * delh;
                 double qnew;
                 double dels;
-                for(int i=2;i<MAX_ITTERATION;i++)
+                for (int i = 2; i < MAX_ITTERATION; i++)
                 {
-                    a-=2*(i-1);
-                    c=-a*c/i;
-                    qnew=(q1-b*q2)/a;
-                    q1=q2;
-                    q2=qnew;
-                    q+=c*qnew;
-                    b+=2.0;
-                    d=1.0/(b+a*d);
-                    delh=(b*d-1.0)*delh;
-                    h+=delh;
-                    dels=q*delh;
-                    s+=dels;
-                    if(Math.Abs(dels/s)<1.0E-10) break;
+                    a -= 2 * (i - 1);
+                    c = -a * c / i;
+                    qnew = (q1 - b * q2) / a;
+                    q1 = q2;
+                    q2 = qnew;
+                    q += c * qnew;
+                    b += 2.0;
+                    d = 1.0 / (b + a * d);
+                    delh = (b * d - 1.0) * delh;
+                    h += delh;
+                    dels = q * delh;
+                    s += dels;
+                    if (Math.Abs(dels / s) < 1.0E-10) break;
                 }
-                bessel_k=Math.Sqrt(Math.PI/(2.0*x))*Math.Exp(-x)/s;
-                bessel_k1=bessel_k*(nu1+x+0.5-a1*h)/x;
+                bessel_k = Math.Sqrt(Math.PI / (2.0 * x)) * Math.Exp(-x) / s;
+                bessel_k1 = bessel_k * (nu1 + x + 0.5 - a1 * h) / x;
             }
-            
-            for(int i=1;i<recurrences;i++)  //upward recurrence of K
+
+            for (int i = 1; i < recurrences; i++)  //upward recurrence of K
             {
-                bessel_knew=(nu1+i)*xi2*bessel_k1+bessel_k;
-                bessel_k=bessel_k1;
-                bessel_k1=bessel_knew;
+                bessel_knew = (nu1 + i) * xi2 * bessel_k1 + bessel_k;
+                bessel_k = bessel_k1;
+                bessel_k1 = bessel_knew;
             }
 
             return bessel_k;
