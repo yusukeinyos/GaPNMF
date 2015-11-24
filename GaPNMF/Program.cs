@@ -39,17 +39,21 @@ namespace GaPNMF
 
         static void Main(string[] args)
         {
-            //MLApp.MLApp matlab=new MLApp.MLApp();
-            //matlab.Execute(@"cd C:\Users\優\Desktop");
-            //double[,] data = new double[100, 2];
+            ////MLApp.MLApp matlab = new MLApp.MLApp();
+            ////matlab.Execute(@"cd C:\Users\優\Desktop");
+            //double[,] data = new double[100, 6];
             //for (int i = 0; i < 100; i++)
             //{
-            //    data[i, 0] = 0.5 * i;
-            //    //data[i, 1] = bessel_2(data[i, 0], 0.8);
-            //    object result=null;
-            //    matlab.Feval("Bessel2",1,out result,data[i,0],0.8);
-            //    object[] res=result as object[];
-            //    data[i, 1] = double.Parse(res[0].ToString());
+            //    data[i, 0] = 0.1 * i;
+            //    data[i, 2] = 0.1 * i;
+            //    data[i, 4] = 0.1 * i;
+            //    data[i, 1] = besselk(data[i, 0], 1.1);
+            //    data[i, 3] = besselk(data[i, 0], 2.1);
+            //    data[i, 5] = besselk(data[i, 0], 3.1);
+            //    //object result = null;
+            //    //matlab.Feval("Bessel2", 1, out result, data[i, 0], 0.8);
+            //    //object[] res = result as object[];
+            //    //data[i, 1] = double.Parse(res[0].ToString());
             //}
             //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
 
@@ -79,7 +83,8 @@ namespace GaPNMF
 
         static void init()
         {
-            X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\mix4.csv");
+            //X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\mix4.csv");
+            X = CsvFileIO.CsvFileIO.ReadData("testdata.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
             K = 10;
@@ -204,7 +209,7 @@ namespace GaPNMF
                         fai[i, j, k] /= sum;        //kについて規格化
             }
         }
-        
+
         static void updateOmega()
         {
             for (int i = 0; i < I; i++)
@@ -235,8 +240,8 @@ namespace GaPNMF
             if (tau > 1.0e-200)
             {
                 double a = Math.Sqrt(lo * tau);
-                double b = bessel_2(2 * a, gamma + 1.0);
-                double c = bessel_2(2 * a, gamma);
+                double b = besselk(2 * a, gamma + 1.0);
+                double c = besselk(2 * a, gamma);
                 return b * Math.Sqrt(tau) / (c * Math.Sqrt(lo));
             }
             else                                                      //tau<<1 ではGIG分布はガンマ分布に
@@ -249,8 +254,8 @@ namespace GaPNMF
             if (tau > 1.0e-200)
             {
                 double a = Math.Sqrt(lo * tau);
-                double b = bessel_2(2 * a, gamma - 1.0);
-                double c = bessel_2(2 * a, gamma);
+                double b = besselk(2 * a, gamma - 1.0);
+                double c = besselk(2 * a, gamma);
                 return b * Math.Sqrt(lo) / (c * Math.Sqrt(tau));
             }
             else                                                      //tau<<1 ではGIG分布はガンマ分布に
@@ -285,20 +290,108 @@ namespace GaPNMF
             return y;
         }
 
-        static double bessel_2(double x, double dim)
-        {
-            double y = 0;
-            MLApp.MLApp matlab = new MLApp.MLApp();
-            matlab.Execute(@"cd C:\Users\優\Desktop");
-            object result = null;
-            matlab.Feval("Bessel2", 1, out result, x, dim);
-            object[] res = result as object[];
-            y = double.Parse(res[0].ToString());
+        //static double bessel_2(double x, double dim)
+        //{
+        //    double y = 0;
+        //    MLApp.MLApp matlab = new MLApp.MLApp();
+        //    matlab.Execute(@"cd C:\Users\優\Desktop");
+        //    object result = null;
+        //    matlab.Feval("Bessel2", 1, out result, x, dim);
+        //    object[] res = result as object[];
+        //    y = double.Parse(res[0].ToString());
 
-            //double a = bessel_1(x, dim);
-            //double b = bessel_1(x, -dim);
-            //y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
-            return y;
+        //    //double a = bessel_1(x, dim);
+        //    //double b = bessel_1(x, -dim);
+        //    //y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
+        //    return y;
+        //}
+
+        //変形第2種ベッセル関数（Fractional order only）整数次元にもいずれ対応
+        static double besselk(double x, double nu)
+        {
+            int MAX_ITTERATION=10000;
+            double bessel_k;
+            double bessel_k1;
+            double bessel_knew;
+
+            int recurrences = (int)(nu + 0.5); //number of upward recurrence of K
+            double nu1 = nu - recurrences; //-0.5 < nu1 < 0.5
+            double xi2=2.0/x;
+
+            if (x < 2.0) //for small x
+            {
+                double gamma_negnu = Gamma2(1.0 - nu1);
+                double gamma_posnu = Gamma2(1.0 + nu1);
+                double gamma1 = (1.0 / gamma_negnu - 1.0 / gamma_posnu) / (2.0 * nu1);
+                double gamma2 = (1.0 / gamma_negnu + 1.0 / gamma_posnu) / 2.0;
+                double sigma = nu1 * -Math.Log(x / 2.0);
+                double f = nu1 * Math.PI / Math.Sin(nu1 * Math.PI) * (Math.Cosh(sigma) * gamma1 + Math.Sinh(sigma) / sigma * (-Math.Log(x / 2.0)) * gamma2);
+                double p=Math.Pow(x/2.0,-nu1)*Gamma2(1.0+nu1)/2.0;
+                double q=Math.Pow(x/2.0,nu1)*Gamma2(1.0-nu1)/2.0;
+                double c=1.0;
+                double d=x*x/4.0;
+                double sum=f;
+                double sum1=p;
+                double del=0.0;
+                double del1=0.0;
+                for(int i=1;i<MAX_ITTERATION;i++)
+                {
+                    f=(i*f+p+q)/(i*i-nu1*nu1);
+                    c*=d/i;
+                    p/=i-nu1;
+                    q/=i+nu1;
+                    del=c*f;
+                    sum+=del;
+                    del1=c*(p-i*f);
+                    sum1+=del1;
+                    if(Math.Abs(del)<1.0E-10) break;
+                }
+                bessel_k=sum;
+                bessel_k1=sum1*xi2;   
+            }
+            else
+            {
+                double b=2.0*(1.0+x);
+                double d=1.0/b;
+                double h=d;
+                double delh=d;
+                double q1=0.0;
+                double q2=1.0;
+                double a1=0.25-nu1*nu1;
+                double q=a1;
+                double c=q1;
+                double a=-a1;
+                double s=1.0+q*delh;
+                double qnew;
+                double dels;
+                for(int i=2;i<MAX_ITTERATION;i++)
+                {
+                    a-=2*(i-1);
+                    c=-a*c/i;
+                    qnew=(q1-b*q2)/a;
+                    q1=q2;
+                    q2=qnew;
+                    q+=c*qnew;
+                    b+=2.0;
+                    d=1.0/(b+a*d);
+                    delh=(b*d-1.0)*delh;
+                    h+=delh;
+                    dels=q*delh;
+                    s+=dels;
+                    if(Math.Abs(dels/s)<1.0E-10) break;
+                }
+                bessel_k=Math.Sqrt(Math.PI/(2.0*x))*Math.Exp(-x)/s;
+                bessel_k1=bessel_k*(nu1+x+0.5-a1*h)/x;
+            }
+            
+            for(int i=1;i<recurrences;i++)  //upward recurrence of K
+            {
+                bessel_knew=(nu1+i)*xi2*bessel_k1+bessel_k;
+                bessel_k=bessel_k1;
+                bessel_k1=bessel_knew;
+            }
+
+            return bessel_k;
         }
 
         static double Gamma2(double d)
