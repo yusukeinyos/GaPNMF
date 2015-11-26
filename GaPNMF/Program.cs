@@ -11,6 +11,7 @@ namespace GaPNMF
     class Program
     {
         static double[,] X;
+        static double[,] X_hat;
         static double[,] W_estimated;
         static double[,] H_estimated;
         static double[] Theta_estimated;
@@ -39,37 +40,40 @@ namespace GaPNMF
 
         static void Main(string[] args)
         {
-            ////MLApp.MLApp matlab = new MLApp.MLApp();
-            ////matlab.Execute(@"cd C:\Users\優\Desktop");
-            //double[,] data = new double[100, 6];
-            //for (int i = 0; i < 100; i++)
-            //{
-            //    data[i, 0] = 0.1 * i;
-            //    data[i, 2] = 0.1 * i;
-            //    data[i, 4] = 0.1 * i;
-            //    data[i, 1] = besselk(data[i, 0], 1.1);
-            //    data[i, 3] = besselk(data[i, 0], 2.1);
-            //    data[i, 5] = besselk(data[i, 0], 3.1);
-            //    //object result = null;
-            //    //matlab.Feval("Bessel2", 1, out result, data[i, 0], 0.8);
-            //    //object[] res = result as object[];
-            //    //data[i, 1] = double.Parse(res[0].ToString());
-            //}
-            //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
-
-            int max_itteration = 50;
-            int itteration = 0;
-            init();
-            double[,] theta_regist = new double[max_itteration, K];
-            do
+            //MLApp.MLApp matlab = new MLApp.MLApp();
+            //matlab.Execute(@"cd C:\Users\優\Desktop");
+            double[,] data = new double[100, 6];
+            for (int i = 0; i < 100; i++)
             {
-                Update();
-                Console.WriteLine("itteration : " + itteration + 1);
-                for (int k = 0; k < K; k++)
-                    theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
-                itteration++;
-            } while (itteration < max_itteration);
-            CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+                data[i, 0] = 0.1 * i;
+                data[i, 2] = 0.1 * i;
+                data[i, 4] = 0.1 * i;
+                data[i, 1] = besselk(data[i, 0], 1.1);
+                data[i, 3] = besselk(data[i, 0], 2.1);
+                data[i, 5] = besselk(data[i, 0], 3.1);
+                //object result = null;
+                //matlab.Feval("Bessel2", 1, out result, data[i, 0], 0.8);
+                //object[] res = result as object[];
+                //data[i, 1] = double.Parse(res[0].ToString());
+            }
+            CsvFileIO.CsvFileIO.WriteData("output.csv", data);
+
+            //int max_itteration = 50;
+            //int itteration = 0;
+            //init();
+            //double[,] theta_regist = new double[max_itteration, K];
+            //do
+            //{
+            //    Update();
+            //    Console.Write("itteration : " + (itteration + 1));
+            //    for (int k = 0; k < K; k++)
+            //        theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+            //    itteration++;
+            //    estimated();
+            //    Console.WriteLine(" error :"+errorcalc());
+            //} while (itteration < max_itteration);
+            //CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+            //CsvFileIO.CsvFileIO.WriteData("xhat.csv", X_hat);
 
             ////----------------ガンマ乱数テスト-----------------------------
             //double[,] data = new double[10000, 1];
@@ -87,8 +91,9 @@ namespace GaPNMF
             X = CsvFileIO.CsvFileIO.ReadData("testdata.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
-            K = 10;
+            K = 2;
             L = K;
+            X_hat = new double[I, J];
             lo_W = new double[I, K];
             tau_W = new double[I, K];
             W_estimated = new double[I, K];
@@ -119,18 +124,55 @@ namespace GaPNMF
             b = 0.1;
             c = 1.0;
             alpha = 1.0;
+
+            goodness_index = Enumerable.Range(0, K).Select(i => (int)i).ToArray();
+        }
+
+        static double errorcalc()
+        {
+            double error = 0;
+            for (int i = 0; i < I; i++)
+                for (int j = 0; j < J; j++)
+                    error += Math.Abs(X_hat[i, j] - X[i, j]) / (I * J);
+            return error;
         }
 
         static void estimated()
         {
             List<int> threshold = new List<int>();
             for (int k = 0; k < K; k++)
-                if (GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) > 0.01)
+                if (GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) > 0.0001)
                     threshold.Add(k);
             int L = threshold.Count;
             W_estimated = new double[I, L];
             H_estimated = new double[L, J];
-
+            for (int i = 0; i < I; i++)
+                for (int l = 0; l < L; l++)
+                {
+                    W_estimated[i, l] = GIG_expectation(a, lo_W[i, l], tau_W[i, l]);
+                }
+            for (int l = 0; l < L; l++)
+                for (int j = 0; j < J; j++)
+                {
+                    H_estimated[l, j] = GIG_expectation(b, lo_H[l, j], tau_H[l, j]);
+                }
+            for (int l = 0; l < L; l++)
+            {
+                Theta_estimated[l] = GIG_expectation(alpha / K, lo_Theta[l], tau_Theta[l]);
+            }
+            for (int i = 0; i < I; i++)
+                for (int j = 0; j < J; j++)
+                {
+                    double sum = 0;
+                    for (int k = 0; k < K; k++)
+                    {
+                        if (goodness_index.Contains(k))
+                        {
+                            sum += Theta_estimated[k] * W_estimated[i, k] * H_estimated[k, j];
+                        }
+                    }
+                    X_hat[i, j] = sum;
+                }
         }
 
         static void Update()
@@ -242,7 +284,7 @@ namespace GaPNMF
             for (int k = 0; k < K; k++)
                 Theta_estimated[k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
 
-            goodness_index = (int[])Theta_estimated.Select((num, index) => new { Index = index, Value = num }).Where(num => num.Value > 0.001).Select(num => num.Index);
+            goodness_index = Theta_estimated.Select((num, index) => new { Index = index, Value = num }).Where(num => num.Value > 0.001).Select(num => num.Index).ToArray();
             L = Theta_estimated.Where(num => num > 0.001).Count();
 
 
@@ -348,7 +390,7 @@ namespace GaPNMF
                 double sum1 = p;
                 double del = 0.0;
                 double del1 = 0.0;
-                for (int i = 1; i < MAX_ITTERATION; i++)
+                for (int i = 1; i <= MAX_ITTERATION; i++)
                 {
                     f = (i * f + p + q) / (i * i - nu1 * nu1);
                     c *= d / i;
@@ -373,12 +415,12 @@ namespace GaPNMF
                 double q2 = 1.0;
                 double a1 = 0.25 - nu1 * nu1;
                 double q = a1;
-                double c = q1;
+                double c = a1;
                 double a = -a1;
                 double s = 1.0 + q * delh;
                 double qnew;
                 double dels;
-                for (int i = 2; i < MAX_ITTERATION; i++)
+                for (int i = 2; i <= MAX_ITTERATION; i++)
                 {
                     a -= 2 * (i - 1);
                     c = -a * c / i;
@@ -398,7 +440,7 @@ namespace GaPNMF
                 bessel_k1 = bessel_k * (nu1 + x + 0.5 - a1 * h) / x;
             }
 
-            for (int i = 1; i < recurrences; i++)  //upward recurrence of K
+            for (int i = 1; i <= recurrences; i++)  //upward recurrence of K
             {
                 bessel_knew = (nu1 + i) * xi2 * bessel_k1 + bessel_k;
                 bessel_k = bessel_k1;
