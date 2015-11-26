@@ -40,40 +40,42 @@ namespace GaPNMF
 
         static void Main(string[] args)
         {
-            //MLApp.MLApp matlab = new MLApp.MLApp();
-            //matlab.Execute(@"cd C:\Users\優\Desktop");
-            double[,] data = new double[100, 6];
-            for (int i = 0; i < 100; i++)
-            {
-                data[i, 0] = 0.1 * i;
-                data[i, 2] = 0.1 * i;
-                data[i, 4] = 0.1 * i;
-                data[i, 1] = besselk(data[i, 0], 1.1);
-                data[i, 3] = besselk(data[i, 0], 2.1);
-                data[i, 5] = besselk(data[i, 0], 3.1);
-                //object result = null;
-                //matlab.Feval("Bessel2", 1, out result, data[i, 0], 0.8);
-                //object[] res = result as object[];
-                //data[i, 1] = double.Parse(res[0].ToString());
-            }
-            CsvFileIO.CsvFileIO.WriteData("output.csv", data);
-
-            //int max_itteration = 50;
-            //int itteration = 0;
-            //init();
-            //double[,] theta_regist = new double[max_itteration, K];
-            //do
+            ////----------------ベッセル関数テスト-----------------------------
+            ////MLApp.MLApp matlab = new MLApp.MLApp();
+            ////matlab.Execute(@"cd C:\Users\優\Desktop");
+            //double[,] data = new double[100, 6];
+            //for (int i = 0; i < 100; i++)
             //{
-            //    Update();
-            //    Console.Write("itteration : " + (itteration + 1));
-            //    for (int k = 0; k < K; k++)
-            //        theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
-            //    itteration++;
-            //    estimated();
-            //    Console.WriteLine(" error :"+errorcalc());
-            //} while (itteration < max_itteration);
-            //CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
-            //CsvFileIO.CsvFileIO.WriteData("xhat.csv", X_hat);
+            //    data[i, 0] = 0.1 * i;
+            //    data[i, 2] = 0.1 * i;
+            //    data[i, 4] = 0.1 * i;
+            //    data[i, 1] = besselk(data[i, 0], 1.1);
+            //    data[i, 3] = besselk(data[i, 0], 2.1);
+            //    data[i, 5] = besselk(data[i, 0], 3.1);
+            //    //object result = null;
+            //    //matlab.Feval("Bessel2", 1, out result, data[i, 0], 0.8);
+            //    //object[] res = result as object[];
+            //    //data[i, 1] = double.Parse(res[0].ToString());
+            //}
+            //CsvFileIO.CsvFileIO.WriteData("output.csv", data);
+            ////--------------------------------------------------------------
+
+            int max_itteration = 50;
+            int itteration = 0;
+            init();
+            double[,] theta_regist = new double[max_itteration, K];
+            do
+            {
+                Update();
+                Console.Write("itteration : " + (itteration + 1));
+                for (int k = 0; k < K; k++)
+                    theta_regist[itteration, k] = GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]);
+                itteration++;
+                estimated();
+                Console.WriteLine(" error :" + errorcalc());
+            } while (itteration < max_itteration);
+            CsvFileIO.CsvFileIO.WriteData("theta_regist.csv", theta_regist);
+            CsvFileIO.CsvFileIO.WriteData("xhat.csv", X_hat);
 
             ////----------------ガンマ乱数テスト-----------------------------
             //double[,] data = new double[10000, 1];
