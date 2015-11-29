@@ -93,7 +93,7 @@ namespace GaPNMF
             X = CsvFileIO.CsvFileIO.ReadData("testdata.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
-            K = 2;
+            K = 3;
             L = K;
             X_hat = new double[I, J];
             lo_W = new double[I, K];
@@ -124,7 +124,11 @@ namespace GaPNMF
 
             a = 0.1;
             b = 0.1;
-            c = 1.0;
+            for (int i = 0; i < I; i++)
+                for (int j = 0; j < J; j++)
+                    c += X[i, j];
+
+            c /= (I*J);
             alpha = 1.0;
 
             goodness_index = Enumerable.Range(0, K).Select(i => (int)i).ToArray();
@@ -203,6 +207,9 @@ namespace GaPNMF
 
                         lo_W[i, k] = a + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
                         tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        if (tau_W[i, k] < 1.0E-50)
+                            tau_W[i, k] = 0;
+
                     }
                 }
         }
@@ -223,6 +230,8 @@ namespace GaPNMF
 
                         lo_H[k, j] = b + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
                         tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        if (tau_H[k, j] < 1.0E-50)
+                            tau_H[k, j] = 0;
                     }
                 }
         }
@@ -241,30 +250,34 @@ namespace GaPNMF
                             sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
                         }
 
+                    
                     lo_Theta[k] = alpha * c + sum1;
                     tau_Theta[k] = sum2;
+                    if (tau_Theta[k] < 1.0E-50)
+                        tau_Theta[k] = 0;
                 }
             }
         }
 
         static void updateFai()
         {
-            for (int k = 0; k < K; k++)
-            {
-                if (goodness_index.Contains(k))
+            double sum;
+            for (int i = 0; i < I; i++)
+                for (int j = 0; j < J; j++)
                 {
-                    double sum = 0;
-                    for (int i = 0; i < I; i++)
-                        for (int j = 0; j < J; j++)
+                    sum = 0;
+                    for (int k = 0; k < K; k++)
+                    {
+                        if (goodness_index.Contains(k))
                         {
                             fai[i, j, k] = 1.0 / (invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]) * invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]));
                             sum += fai[i, j, k];
                         }
-                    for (int i = 0; i < I; i++)
-                        for (int j = 0; j < J; j++)
+                    }
+                    for (int k = 0; k < K; k++)
+                        if (goodness_index.Contains(k))
                             fai[i, j, k] /= sum;        //kについて規格化
                 }
-            }
         }
 
         static void updateOmega()
@@ -318,7 +331,7 @@ namespace GaPNMF
             }
             else                                                      //tau<<1 ではGIG分布はガンマ分布に
             {
-                double e = lo / (gamma - 1.0);
+                double e = lo / (gamma - 1.0);  //あってる？？？？？？？？？？
                 if (e >= 0)
                     return e;
                 else
@@ -371,6 +384,9 @@ namespace GaPNMF
             double bessel_k;
             double bessel_k1;
             double bessel_knew;
+
+            if (nu < 0)
+                nu = -nu; // K_(-nu) = K_nu
 
             int recurrences = (int)(nu + 0.5); //number of upward recurrence of K
             double nu1 = nu - recurrences; //-0.5 < nu1 < 0.5
