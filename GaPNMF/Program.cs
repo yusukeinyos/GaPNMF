@@ -128,7 +128,7 @@ namespace GaPNMF
                 for (int j = 0; j < J; j++)
                     c += X[i, j];
 
-            c /= (I*J);
+            c /= (I * J);
             alpha = 1.0;
 
             goodness_index = Enumerable.Range(0, K).Select(i => (int)i).ToArray();
@@ -186,7 +186,11 @@ namespace GaPNMF
             updateFai();
             updateOmega();
             updateHpara();
+            updateFai();
+            updateOmega();
             updateWpara();
+            updateFai();
+            updateOmega();
             updateThetapara();
             sortingOnTheta();
         }
@@ -202,12 +206,17 @@ namespace GaPNMF
                         for (int j = 0; j < J; j++)
                         {
                             sum1 += GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
+                            if (fai[i, j, k] != 0)
+                                //invGIG_expectaionでInfinityが返ってくることがあるので
+                                sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
                         }
 
                         lo_W[i, k] = a + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
-                        tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
-                        if (tau_W[i, k] < 1.0E-50)
+                        if (sum2 == 0)
+                            tau_W[i, k] = 0;
+                        else
+                            tau_W[i, k] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        if (tau_W[i, k] < 1.0E-100)
                             tau_W[i, k] = 0;
 
                     }
@@ -225,12 +234,17 @@ namespace GaPNMF
                         for (int i = 0; i < I; i++)
                         {
                             sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) / omega[i, j];
-                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]);
+                            if (fai[i, j, k] != 0)
+                                //invGIG_expectaionでInfinityが返ってくることがあるので                     
+                                sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]);
                         }
 
                         lo_H[k, j] = b + GIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum1;
-                        tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
-                        if (tau_H[k, j] < 1.0E-50)
+                        if (sum2 == 0)
+                            tau_H[k, j] = 0;
+                        else
+                            tau_H[k, j] = invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]) * sum2;
+                        if (tau_H[k, j] < 1.0E-100)
                             tau_H[k, j] = 0;
                     }
                 }
@@ -247,13 +261,15 @@ namespace GaPNMF
                         for (int j = 0; j < J; j++)
                         {
                             sum1 += GIG_expectation(a, lo_W[i, k], tau_W[i, k]) * GIG_expectation(b, lo_H[k, j], tau_H[k, j]) / omega[i, j];
-                            sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
+                            if (fai[i, j, k] != 0)
+                                //invGIG_expectaionでInfinityが返ってくることがあるので
+                                sum2 += X[i, j] * fai[i, j, k] * fai[i, j, k] * invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]);
                         }
 
-                    
+
                     lo_Theta[k] = alpha * c + sum1;
                     tau_Theta[k] = sum2;
-                    if (tau_Theta[k] < 1.0E-50)
+                    if (tau_Theta[k] < 1.0E-100)
                         tau_Theta[k] = 0;
                 }
             }
@@ -271,6 +287,8 @@ namespace GaPNMF
                         if (goodness_index.Contains(k))
                         {
                             fai[i, j, k] = 1.0 / (invGIG_expectation(a, lo_W[i, k], tau_W[i, k]) * invGIG_expectation(b, lo_H[k, j], tau_H[k, j]) * invGIG_expectation(alpha / K, lo_Theta[k], tau_Theta[k]));
+                            if (fai[i, j, k] < 1.0E-100)
+                                fai[i, j, k] = 0;
                             sum += fai[i, j, k];
                         }
                     }
@@ -311,8 +329,8 @@ namespace GaPNMF
             if (tau > 1.0e-200)
             {
                 double a = Math.Sqrt(lo * tau);
-                double b = besselk(2 * a, gamma + 1.0);
-                double c = besselk(2 * a, gamma);
+                double b = besselk(2 * a, gamma + 1.0, 1);
+                double c = besselk(2 * a, gamma, 1);
                 return b * Math.Sqrt(tau) / (c * Math.Sqrt(lo));
             }
             else                                                      //tau<<1 ではGIG分布はガンマ分布に
@@ -322,11 +340,13 @@ namespace GaPNMF
 
         static double invGIG_expectation(double gamma, double lo, double tau)
         {
+            if (tau == double.PositiveInfinity)
+                return 0;
             if (tau > 1.0e-200)
             {
                 double a = Math.Sqrt(lo * tau);
-                double b = besselk(2 * a, gamma - 1.0);
-                double c = besselk(2 * a, gamma);
+                double b = besselk(2 * a, gamma - 1.0, 1);
+                double c = besselk(2 * a, gamma, 1);
                 return b * Math.Sqrt(lo) / (c * Math.Sqrt(tau));
             }
             else                                                      //tau<<1 ではGIG分布はガンマ分布に
@@ -378,12 +398,17 @@ namespace GaPNMF
         //}
 
         //変形第2種ベッセル関数（Fractional order only）整数次元にもいずれ対応
-        static double besselk(double x, double nu)
+        //scaling_flag==0 ⇒ return besselk(x,nu)
+        //scaling_flag==1 ⇒ return beselk(x,nu)*exp(x) (for large x) avoiding underflow in calculation of exp(-x)
+        static double besselk(double x, double nu, int scaling_flag)
         {
             int MAX_ITTERATION = 10000;
             double bessel_k;
             double bessel_k1;
             double bessel_knew;
+
+            if (x == Double.PositiveInfinity)
+                return 0;
 
             if (nu < 0)
                 nu = -nu; // K_(-nu) = K_nu
@@ -454,7 +479,10 @@ namespace GaPNMF
                     s += dels;
                     if (Math.Abs(dels / s) < 1.0E-10) break;
                 }
-                bessel_k = Math.Sqrt(Math.PI / (2.0 * x)) * Math.Exp(-x) / s;
+                if (scaling_flag == 0)
+                    bessel_k = Math.Sqrt(Math.PI / (2.0 * x)) * Math.Exp(-x) / s;
+                else
+                    bessel_k = Math.Sqrt(Math.PI / (2.0 * x)) / s;
                 bessel_k1 = bessel_k * (nu1 + x + 0.5 - a1 * h) / x;
             }
 
