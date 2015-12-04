@@ -89,11 +89,11 @@ namespace GaPNMF
 
         static void init()
         {
-            //X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\mix4.csv");
-            X = CsvFileIO.CsvFileIO.ReadData("testdata.csv");
+            X = CsvFileIO.CsvFileIO.ReadData(@"C:\Users\優\Desktop\音素材\GaPNMF\piano_c4_cq.csv");
+            //X = CsvFileIO.CsvFileIO.ReadData("testdata.csv");
             I = X.GetLength(0);
             J = X.GetLength(1);
-            K = 3;
+            K = 50;
             L = K;
             X_hat = new double[I, J];
             lo_W = new double[I, K];
