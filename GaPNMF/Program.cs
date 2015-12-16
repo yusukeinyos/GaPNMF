@@ -13,8 +13,11 @@ namespace GaPNMF
         static double[,] X;
         static double[,] X_hat;
         static double[,] W_estimated;
+        static double[,] Winv_estimated;
         static double[,] H_estimated;
+        static double[,] Hinv_estimated;
         static double[] Theta_estimated;
+        static double[] Thetainv_estimated;
 
         static double[,] lo_W;
         static double[,] tau_W;
@@ -99,12 +102,15 @@ namespace GaPNMF
             lo_W = new double[I, K];
             tau_W = new double[I, K];
             W_estimated = new double[I, K];
+            Winv_estimated = new double[I, K];
             lo_H = new double[K, J];
             tau_H = new double[K, J];
             H_estimated = new double[K, J];
+            Hinv_estimated = new double[K, J];
             lo_Theta = new double[K];
             tau_Theta = new double[K];
             Theta_estimated = new double[K];
+            Thetainv_estimated = new double[K];
             fai = new double[I, J, K];
             omega = new double[I, J];
 
@@ -337,7 +343,7 @@ namespace GaPNMF
                 return gamma / lo;
 
         }
-
+        //--------------------------------------------------------------------------------
         static double invGIG_expectation(double gamma, double lo, double tau)
         {
             if (tau == double.PositiveInfinity)
@@ -360,7 +366,7 @@ namespace GaPNMF
             }
 
         }
-
+        //--------------------------------------------------------------------------------
         static double bessel_1(double x, double dim)
         {
             double y = 0;
@@ -380,7 +386,7 @@ namespace GaPNMF
             y = y * a;
             return y;
         }
-
+        //--------------------------------------------------------------------------------
         //static double bessel_2(double x, double dim)
         //{
         //    double y = 0;
@@ -396,7 +402,7 @@ namespace GaPNMF
         //    //y = (a * Math.Cos(dim * Math.PI) - b) / Math.Sin(dim * Math.PI);
         //    return y;
         //}
-
+        //--------------------------------------------------------------------------------
         //変形第2種ベッセル関数（Fractional order only）整数次元にもいずれ対応
         //scaling_flag==0 ⇒ return besselk(x,nu)
         //scaling_flag==1 ⇒ return beselk(x,nu)*exp(x) (for large x) avoiding underflow in calculation of exp(-x)
@@ -495,7 +501,8 @@ namespace GaPNMF
 
             return bessel_k;
         }
-
+        //--------------------------------------------------------------------------------
+        //ガンマ関数（負の引数についても）
         static double Gamma2(double d)
         {
             if (d > 0)
@@ -504,6 +511,8 @@ namespace GaPNMF
                 return Math.PI / (Math.Sin(Math.PI * d) * Mt.Gamma(1.0 - d));
 
         }
+        //--------------------------------------------------------------------------------
+        //ガンマ分布に従う乱数生成
         static double gamma_rnd(RandomMT rand, double shape, double scale)
         {
             double output;
@@ -511,7 +520,7 @@ namespace GaPNMF
             output = scale * Mt.InverseIncompleteGamma(input, shape);
             return output;
         }
-
+        //--------------------------------------------------------------------------------
         //初期値をランダムに設定 (0,1]
         public static double[,] initMatrix(int N, int M)
         {
